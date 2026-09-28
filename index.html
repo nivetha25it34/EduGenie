@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>EduGenie - AI Learning Assistant</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            background: white;
+            width: 90%;
+            max-width: 650px;
+            padding: 35px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+
+        h1 {
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 25px;
+        }
+
+        select {
+            width: 85%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            font-size: 16px;
+        }
+
+        input {
+            width: 80%;
+            padding: 14px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            font-size: 16px;
+        }
+
+        button {
+            margin-top: 15px;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 10px;
+            background: #667eea;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        #answer {
+            margin-top: 25px;
+            padding: 20px;
+            background: #f4f4f4;
+            border-radius: 12px;
+            text-align: left;
+            min-height: 50px;
+        }
+
+        .quiz-option {
+            display: block;
+            width: 100%;
+            margin-top: 10px;
+            text-align: left;
+        }
+
+        #score {
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>🎓 EduGenie</h1>
+
+    <p class="subtitle">
+        Google Gemini Powered Learning Assistant
+    </p>
+
+    <select id="subject">
+        <option value="General">📚 General</option>
+        <option value="Tamil">தமிழ் - Tamil</option>
+        <option value="English">English</option>
+        <option value="RDBMS">RDBMS</option>
+        <option value="JavaScript">JavaScript</option>
+        <option value="Microprocessor">Microprocessor</option>
+        <option value="Data Structures">Data Structures</option>
+    </select>
+
+    <select id="mode">
+        <option value="Normal Answer">Normal Answer</option>
+        <option value="2 Mark">2 Mark Answer</option>
+        <option value="3 Mark">3 Mark Answer</option>
+        <option value="5 Mark">5 Mark Answer</option>
+        <option value="8 Mark">8 Mark Answer</option>
+        <option value="10 Mark">10 Mark Answer</option>
+    </select>
+
+    <button onclick="startQuiz()">
+        🧠 Start Quiz
+    </button>
+
+    <br>
+
+    <input
+        type="text"
+        id="question"
+        placeholder="Ask your study question..."
+    >
+<button onclick="startVoice()">
+    🎤 Speak
+</button>
+    <br>
+
+    <button onclick="askGemini()">
+        Ask EduGenie 🤖
+    </button>
+
+    <div id="answer">
+        Your answer will appear here...
+    </div>
+<button onclick="copyAnswer()">
+    📋 Copy Answer
+</button>
+    <div id="score"></div>
+
+</div>
+
+<script>
+
+document.getElementById("question").addEventListener("keydown", function(event) {
+    if (event.key === "Enter") {
+        askGemini();
+    }
+});
+
+async function askGemini() {
+
+    const question = document.getElementById("question").value;
+    const subject = document.getElementById("subject").value;
+    const mode = document.getElementById("mode").value;
+    const answer = document.getElementById("answer");
+
+    if (!question) {
+        answer.innerText = "Please enter a question.";
+        return;
+    }
+
+    answer.innerText = "Thinking... 🤔";
+
+    try {
+
+        const prompt = `
+Subject: ${subject}
+Answer Mode: ${mode}
+
+Student Question:
+${question}
+
+Please answer according to the selected answer mode.
+If it is a mark-based answer, format it appropriately for that number of marks.
+Use clear headings and important points where suitable.
+`;
+
+        const response = await fetch("/ask", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                question: prompt
+            })
+        });
+
+        const data = await response.json();
+
+        answer.innerText = data.answer;
+
+    } catch (error) {
+
+        answer.innerText = "Something went wrong. Please try again.";
+
+    }
+}
+
+
+async function startQuiz() {
+
+    const subject = document.getElementById("subject").value;
+    const answer = document.getElementById("answer");
+    const score = document.getElementById("score");
+
+    answer.innerText = "Generating Quiz... 🧠";
+    score.innerText = "";
+
+    try {
+
+        const response = await fetch("/ask", {
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+                question: `Create one multiple-choice quiz question for ${subject}.
+
+Return ONLY in this format:
+
+QUESTION: Your question here
+
+A: Option A
+B: Option B
+C: Option C
+D: Option D
+
+ANSWER: A
+
+Do not add any other explanation.`
+            })
+        });
+
+        const data = await response.json();
+
+        createQuiz(data.answer);
+
+    } catch (error) {
+
+        answer.innerText = "Quiz generation failed. Please try again.";
+
+    }
+}
+
+
+function createQuiz(text) {
+
+    const answer = document.getElementById("answer");
+
+    const questionMatch = text.match(/QUESTION:\s*(.*)/);
+    const optionA = text.match(/A:\s*(.*)/);
+    const optionB = text.match(/B:\s*(.*)/);
+    const optionC = text.match(/C:\s*(.*)/);
+    const optionD = text.match(/D:\s*(.*)/);
+    const correct = text.match(/ANSWER:\s*([A-D])/);
+
+    if (!questionMatch || !optionA || !optionB || !optionC || !optionD || !correct) {
+        answer.innerText = text;
+        return;
+    }
+
+    const question = questionMatch[1];
+    const correctAnswer = correct[1];
+
+    answer.innerHTML = `
+        <h3>🧠 ${question}</h3>
+
+        <button class="quiz-option" onclick="checkAnswer('A', '${correctAnswer}')">
+            A: ${optionA[1]}
+        </button>
+
+        <button class="quiz-option" onclick="checkAnswer('B', '${correctAnswer}')">
+            B: ${optionB[1]}
+        </button>
+
+        <button class="quiz-option" onclick="checkAnswer('C', '${correctAnswer}')">
+            C: ${optionC[1]}
+        </button>
+
+        <button class="quiz-option" onclick="checkAnswer('D', '${correctAnswer}')">
+            D: ${optionD[1]}
+        </button>
+
+        <div id="quizResult"></div>
+    `;
+}
+
+
+function checkAnswer(selected, correct) {
+
+    const result = document.getElementById("quizResult");
+
+    if (selected === correct) {
+        result.innerHTML = "<h3>✅ Correct Answer! 🎉</h3>";
+    } else {
+        result.innerHTML = `
+            <h3>❌ Wrong Answer</h3>
+            <p>Correct answer: <b>${correct}</b></p>
+        `;
+    }
+}
+function startVoice() {
+
+    const SpeechRecognition =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+        alert("Voice input is not supported in this browser.");
+        return;
+    }
+
+    const recognition = new SpeechRecognition();
+
+    recognition.lang = "en-IN";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.start();
+
+    recognition.onresult = function(event) {
+        const spokenText = event.results[0][0].transcript;
+
+        document.getElementById("question").value = spokenText;
+    };
+
+    recognition.onerror = function() {
+        alert("Could not hear your voice. Please try again.");
+    };
+}
+function copyAnswer() {
+    const answer = document.getElementById("answer").innerText;
+
+    navigator.clipboard.writeText(answer)
+        .then(() => {
+            alert("Answer copied! 📋");
+        })
+        .catch(() => {
+            alert("Copy failed. Please try again.");
+        });
+}
+</script>
+
+</body>
+</html>
